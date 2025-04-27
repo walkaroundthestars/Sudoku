@@ -152,8 +152,11 @@ int main(void) {
     printf("Choose level: 1, 2 or 3:\n");
     int level;
     scanf("%d", &level);
-
-    // add data validation
+    
+    while (level != 1 && level != 2 && level != 3) {
+        printf("Please choose correct option.\n");
+        scanf("%d", &level);
+    }
 
     createBoard();
     if (level == 1) {
