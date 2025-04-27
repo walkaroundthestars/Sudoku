@@ -91,7 +91,7 @@ void createBoard(int** board, int size) {
 }
 
 //function to display board in nice way
-void printBoard(int** board, int size)
+void printBoard(int** board, int size, int** originalBoard)
 {
     int blockSize = (int)sqrt(size);
 
@@ -108,7 +108,14 @@ void printBoard(int** board, int size)
             {
                 printf("|");
             }
-            printf("%3d  ", board[i][j]);
+            if (board[i][j] != 0 && board[i][j] == originalBoard[i][j]) {
+                printf("\033[0;32m");
+                printf("%3d  ", board[i][j]);
+                printf("\033[0m");
+            }
+            else {
+                printf("%3d  ", board[i][j]);
+            }
         }
     }
 }
@@ -207,7 +214,7 @@ int main(void) {
     copyBoard(board, originalBoard, size);
 
     while (1) {
-        printBoard(board, size);
+        printBoard(board, size, originalBoard);
         if (isBoardComplete(board, size) == 1) {
             printf("\nCongratulations! You won with %d mistakes :)", mistakes);
             break;
