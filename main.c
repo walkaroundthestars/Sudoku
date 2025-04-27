@@ -148,15 +148,30 @@ void removeNumbers(int quantityToDelete) {
 }
 
 int main(void) {
+    int mistakes = 0;
+    printf("Choose level: 1, 2 or 3:\n");
+    int level;
+    scanf("%d", &level);
+
+    // add data validation
+
     createBoard();
-    removeNumbers(50);
+    if (level == 1) {
+        removeNumbers(size * size *  0.4);
+    }
+    else if (level == 2) {
+        removeNumbers(size * size *  0.6);
+    }
+    else if (level == 3) {
+        removeNumbers(size * size *  0.8);
+    }
+
     copyBoard();
 
     while (1) {
-        //system("cls");
         printBoard();
         if (isBoardComplete()) {
-            printf("Congratulations! You won :)");
+            printf("\nCongratulations! You won with %d mistakes :)", mistakes);
             break;
         }
 
@@ -186,6 +201,7 @@ int main(void) {
         }
         else if (!isValidMove(row, col, value)) {
             printf("Invalid move.\n");
+            mistakes++;
         }
         else {
             board[row][col] = value;
