@@ -5,4 +5,4 @@
 
 
 ## Problems:
-- after loading changes there won't be difference between numbers typed in and given by program, so user will be able to change already given numbers.
+- changes in files with saved games might cause problems with loading old games.
