@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
-#include <string.h>
 
 //function drawing horizontal line separating board :)
 void drawLine(int n) {
@@ -124,18 +123,21 @@ void printBoard(int** board, int size, int** originalBoard)
     }
 }
 
+//function for saving current game
 void saveToFile(int** board, int size, int** originalBoard, int mistakes) {
     char fileName[50];
     sprintf(fileName, "sudoku%dx%d.txt", size, size);
     FILE* file = fopen(fileName, "w");
 
     if (file == NULL) {
-        printf("Couldn't open the file.\n");
+        printf("Couldn't save the game.\n");
         return;
     }
 
+    //saving number of mistakes
     fprintf(file, "%d\n", mistakes);
 
+    //saving current game state
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
             fprintf(file, "%d ", board[i][j]);
@@ -143,36 +145,41 @@ void saveToFile(int** board, int size, int** originalBoard, int mistakes) {
         fprintf(file, "\n");
     }
 
-    //////
+    //saving original board
     fprintf(file, "\n");
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
             fprintf(file, "%d ", originalBoard[i][j]);
         }
+        fprintf(file, "\n");
     }
 
     fclose(file);
-    printf("File saved as %s.\n", fileName);
+    printf("Game successfully saved.\n");
 }
 
-void readFromFile(int** board, int size, int** originalBoard, int mistakes) {
+//function for loading saved games
+int readFromFile(int** board, int size, int** originalBoard, int mistakes) {
     char fileName[50];
     sprintf(fileName, "sudoku%dx%d.txt", size, size);
     FILE* file = fopen(fileName, "r");
 
     if (file == NULL) {
-        printf("Couldn't open the file.\n");
-        return;
+        printf("Couldn't find a game in this size.\n");
+        return 0;
     }
 
+    //loading saved number of mistakes
     fscanf(file, "%d\n", &mistakes);
 
+    //loading saved game state
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
             fscanf(file, "%d", &board[i][j]);
         }
     }
 
+    //loading original board pattern
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
             fscanf(file, "%d", &originalBoard[i][j]);
@@ -180,7 +187,7 @@ void readFromFile(int** board, int size, int** originalBoard, int mistakes) {
     }
 
     fclose(file);
-    printf("Game loaded.\n");
+    return 1;
 }
 
 //checking if game is over
@@ -220,8 +227,9 @@ void removeNumbers(int** board, int size, int quantityToDelete) {
 void game(int** board, int size, int** originalBoard, int mistakes) {
     while (1) {
         printBoard(board, size, originalBoard);
+
         if (isBoardComplete(board, size) == 1) {
-            printf("\nCongratulations! You won with %d mistakes :)", mistakes);
+            printf("\nCongratulations! You won with %d mistakes :)\n", mistakes);
             break;
         }
 
@@ -242,7 +250,6 @@ void game(int** board, int size, int** originalBoard, int mistakes) {
                 break;
             }
             if (ans == 'y') {
-                printf("savingggg....");
                 saveToFile(board, size, originalBoard, mistakes);
                 break;
             }
@@ -275,7 +282,7 @@ void game(int** board, int size, int** originalBoard, int mistakes) {
 //creating new game
 void newGame() {
     int mistakes = 0;
-    int size;
+    int size = 0;
 
     //choose of size of board
     printf("Choose size of board:\n1) 4x4\n2) 9x9\n3) 16x16\n");
@@ -346,7 +353,7 @@ void newGame() {
 
 //loading and preparing old game
 void oldGame() {
-    int size;
+    int size = 0;
 
     printf("What size of game should I look for?\n1) 4x4\n2) 9x9\n3) 16x16\n");
     int answer;
@@ -379,9 +386,11 @@ void oldGame() {
 
     //load from file
     int mistakes = 0;
-    readFromFile(board, size, originalBoard, mistakes);
+    int isSaved = readFromFile(board, size, originalBoard, mistakes);
 
-    game(board, size, originalBoard, mistakes);
+    if (isSaved == 1) {
+        game(board, size, originalBoard, mistakes);
+    }
 
     for (int i = 0; i < size; i++) {
         free(board[i]);
@@ -391,6 +400,7 @@ void oldGame() {
     free(originalBoard);
 }
 
+//printing instruction how to play
 void printInstruction() {
     printf("\n*** How to Play Sudoku ***\n");
     printf("1. Choose the board size and difficulty level.\n");
