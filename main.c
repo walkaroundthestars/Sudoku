@@ -124,7 +124,7 @@ void printBoard(int** board, int size, int** originalBoard)
     }
 }
 
-void saveToFile(int** board, int size) {
+void saveToFile(int** board, int size, int** originalBoard, int mistakes) {
     char fileName[50];
     sprintf(fileName, "sudoku%dx%d.txt", size, size);
     FILE* file = fopen(fileName, "w");
@@ -134,6 +134,8 @@ void saveToFile(int** board, int size) {
         return;
     }
 
+    fprintf(file, "%d\n", mistakes);
+
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
             fprintf(file, "%d ", board[i][j]);
@@ -141,11 +143,19 @@ void saveToFile(int** board, int size) {
         fprintf(file, "\n");
     }
 
+    //////
+    fprintf(file, "\n");
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            fprintf(file, "%d ", originalBoard[i][j]);
+        }
+    }
+
     fclose(file);
     printf("File saved as %s.\n", fileName);
 }
 
-void readFromFile(int** board, int size) {
+void readFromFile(int** board, int size, int** originalBoard, int mistakes) {
     char fileName[50];
     sprintf(fileName, "sudoku%dx%d.txt", size, size);
     FILE* file = fopen(fileName, "r");
@@ -155,9 +165,17 @@ void readFromFile(int** board, int size) {
         return;
     }
 
+    fscanf(file, "%d\n", &mistakes);
+
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
             fscanf(file, "%d", &board[i][j]);
+        }
+    }
+
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            fscanf(file, "%d", &originalBoard[i][j]);
         }
     }
 
@@ -225,7 +243,7 @@ void game(int** board, int size, int** originalBoard, int mistakes) {
             }
             if (ans == 'y') {
                 printf("savingggg....");
-                saveToFile(board, size);
+                saveToFile(board, size, originalBoard, mistakes);
                 break;
             }
         }
@@ -354,22 +372,16 @@ void oldGame() {
         board[i] = malloc(size * sizeof(int));
     }
 
-    //load from file
-    //load and save mistakes
-    readFromFile(board, size);
-
     int **originalBoard = malloc(size * sizeof(int*));
     for (int i = 0; i < size; i++) {
         originalBoard[i] = malloc(size * sizeof(int));
     }
 
-    for (int i = 0; i < size; i++) {
-        for (int j = 0; j < size; j++) {
-            originalBoard[i][j] = 0;
-        }
-    }
+    //load from file
+    int mistakes = 0;
+    readFromFile(board, size, originalBoard, mistakes);
 
-    game(board, size, originalBoard, 0);
+    game(board, size, originalBoard, mistakes);
 
     for (int i = 0; i < size; i++) {
         free(board[i]);
@@ -379,40 +391,48 @@ void oldGame() {
     free(originalBoard);
 }
 
+void printInstruction() {
+    printf("\n*** How to Play Sudoku ***\n");
+    printf("1. Choose the board size and difficulty level.\n");
+    printf("2. Fill every empty cell so that:\n");
+    printf("   - Each number appears once in every row,\n");
+    printf("   - Each number appears once in every column,\n");
+    printf("   - Each number appears once in every box.\n");
+    printf("3. To make a move, enter three numbers:\n");
+    printf("   (row) (column) (value)\n");
+    printf("   Example: 2 3 5 (puts 5 in row 2, column 3)\n");
+    printf("4. You cannot change the given numbers.\n");
+    printf("5. Wrong moves will be counted as mistakes.\n");
+    printf("6. Enter -1 as the row number to quit the game.\n\n");
+    printf("Press Enter to come back to menu.\n");
+    getchar();
+}
+
 int main(void) {
-
-    printf("Choose option from menu:\n1) New game\n2) Old game\n3) How to play\n 4) Exit\n");
     int menu;
-    scanf("%d", &menu);
-
-    while (menu != 1 && menu != 2 && menu != 3 && menu != 4) {
-        printf("Please enter correct value.\n");
+    do {
+        printf("Choose option from menu:\n1) New game\n2) Old game\n3) How to play\n4) Exit\n");
         scanf("%d", &menu);
-    }
 
-    if (menu == 1) {
-        newGame();
-    }
-    else if (menu == 2) {
-        oldGame();
-    }
-    else if (menu == 3) {
-        printf("\n*** How to Play Sudoku ***\n");
-        printf("1. Choose the board size and difficulty level.\n");
-        printf("2. Fill every empty cell so that:\n");
-        printf("   - Each number appears once in every row,\n");
-        printf("   - Each number appears once in every column,\n");
-        printf("   - Each number appears once in every box.\n");
-        printf("3. To make a move, enter three numbers:\n");
-        printf("   (row) (column) (value)\n");
-        printf("   Example: 2 3 5 (puts 5 in row 2, column 3)\n");
-        printf("4. You cannot change the given numbers.\n");
-        printf("5. Wrong moves will be counted as mistakes.\n");
-        printf("6. Enter -1 as the row number to quit the game.\n\n");
-    }
-    else if (menu == 4) {
-        printf("Thank you for playing!");
-    }
+        while (menu != 1 && menu != 2 && menu != 3 && menu != 4) {
+            printf("Please enter correct value.\n");
+            scanf("%d", &menu);
+        }
 
+        if (menu == 1) {
+            newGame();
+        }
+        else if (menu == 2) {
+            oldGame();
+        }
+        else if (menu == 3) {
+            printInstruction();
+        }
+        else if (menu == 4) {
+            printf("Thank you for playing!");
+        }
+
+        while (getchar() != '\n');
+    } while (menu != 4);
     return 0;
 }
