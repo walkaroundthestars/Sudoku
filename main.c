@@ -418,6 +418,7 @@ void printInstruction() {
     getchar();
 }
 
+//main menu
 int main(void) {
     int menu;
     do {
