@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#include <time.h>
+#include <string.h>
 
 //function drawing horizontal line separating board :)
 void drawLine(int n) {
@@ -10,10 +12,8 @@ void drawLine(int n) {
 }
 
 //function to randomize numbers in rows
-void shuffle(int *array, int size)
-{
-    for (int i = size - 1; i > 0; i--)
-    {
+void shuffle(int *array, int size) {
+    for (int i = size - 1; i > 0; i--) {
         int j = rand() % (i + 1);
         int temp = array[i];
         array[i] = array[j];
@@ -21,9 +21,31 @@ void shuffle(int *array, int size)
     }
 }
 
-//checking if move/number placement is correct
-int isValidMove(int** board, int size, int row, int col, int number) {
+//function for choosing board size
+int chooseSize() {
+    int size = 9;
 
+    printf("Choose size of board:\n1) 4x4\n2) 9x9\n3) 16x16\n");
+    int answer;
+    scanf("%d", &answer);
+
+    while (answer != 1 && answer != 2 && answer != 3) {
+        printf("Please enter correct value.\n");
+        scanf("%d", &answer);
+    }
+
+    if (answer == 1) {
+        size = 4;
+    } else if (answer == 2) {
+        size = 9;
+    } else if (answer == 3) {
+        size = 16;
+    }
+    return size;
+}
+
+//checking if move/number placement is correct
+int isValidMove(int **board, int size, int row, int col, int number) {
     //checking if number is the only one in this row and column
     for (int i = 0; i < size; i++) {
         if (board[i][col] == number || board[row][i] == number) {
@@ -31,16 +53,14 @@ int isValidMove(int** board, int size, int row, int col, int number) {
         }
     }
 
-    int blockSize = (int)sqrt(size);
+    int blockSize = (int) sqrt(size);
 
     //checking if number is the only one in the neighborhood
     int startRow = (row / blockSize) * blockSize;
     int startCol = (col / blockSize) * blockSize;
 
-    for (int i = startRow; i < startRow + blockSize; i++)
-    {
-        for (int j = startCol; j < startCol + blockSize; j++)
-        {
+    for (int i = startRow; i < startRow + blockSize; i++) {
+        for (int j = startCol; j < startCol + blockSize; j++) {
             if (board[i][j] == number)
                 return 0;
         }
@@ -50,15 +70,14 @@ int isValidMove(int** board, int size, int row, int col, int number) {
 }
 
 //function to fill board with numbers
-int fillBoard(int** board, int size) {
+int fillBoard(int **board, int size) {
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
             if (board[i][j] == 0) {
-
                 int numbers[size];
 
                 for (int k = 0; k < size; k++) {
-                    numbers[k] = k+1;
+                    numbers[k] = k + 1;
                 }
 
                 shuffle(numbers, size);
@@ -80,7 +99,7 @@ int fillBoard(int** board, int size) {
 }
 
 //function to create clear board
-void createBoard(int** board, int size) {
+void createBoard(int **board, int size) {
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
             board[i][j] = 0;
@@ -90,22 +109,18 @@ void createBoard(int** board, int size) {
 }
 
 //function to display board in nice way
-void printBoard(int** board, int size, int** originalBoard)
-{
-    int blockSize = (int)sqrt(size);
+void printBoard(int **board, int size, int **originalBoard) {
+    int blockSize = (int) sqrt(size);
 
     for (int i = 0; i < size; i++) {
         printf("\n");
-        if (i % blockSize == 0 && i != 0)
-        {
+        if (i % blockSize == 0 && i != 0) {
             //drawing horizontal line
-            drawLine(size*5);
-            printf("\n" );
+            drawLine(size * 5);
+            printf("\n");
         }
-        for (int j = 0; j < size; j++)
-        {
-            if (j % blockSize == 0 && j != 0)
-            {
+        for (int j = 0; j < size; j++) {
+            if (j % blockSize == 0 && j != 0) {
                 //drawing vertical line
                 printf("|");
             }
@@ -114,8 +129,7 @@ void printBoard(int** board, int size, int** originalBoard)
                 printf("\033[0;32m");
                 printf("%3d  ", board[i][j]);
                 printf("\033[0m");
-            }
-            else {
+            } else {
                 //showing other numbers and zeros in white
                 printf("%3d  ", board[i][j]);
             }
@@ -124,10 +138,10 @@ void printBoard(int** board, int size, int** originalBoard)
 }
 
 //function for saving current game
-void saveToFile(int** board, int size, int** originalBoard, int mistakes) {
+void saveToFile(int **board, int size, int **originalBoard, int mistakes) {
     char fileName[50];
     sprintf(fileName, "sudoku%dx%d.txt", size, size);
-    FILE* file = fopen(fileName, "w");
+    FILE *file = fopen(fileName, "w");
 
     if (file == NULL) {
         printf("Couldn't save the game.\n");
@@ -159,10 +173,10 @@ void saveToFile(int** board, int size, int** originalBoard, int mistakes) {
 }
 
 //function for loading saved games
-int readFromFile(int** board, int size, int** originalBoard, int mistakes) {
+int readFromFile(int **board, int size, int **originalBoard, int mistakes) {
     char fileName[50];
     sprintf(fileName, "sudoku%dx%d.txt", size, size);
-    FILE* file = fopen(fileName, "r");
+    FILE *file = fopen(fileName, "r");
 
     if (file == NULL) {
         printf("Couldn't find a game in this size.\n");
@@ -191,7 +205,7 @@ int readFromFile(int** board, int size, int** originalBoard, int mistakes) {
 }
 
 //checking if game is over
-int isBoardComplete(int** board, int size) {
+int isBoardComplete(int **board, int size) {
     for (int i = 0; i < size; i++)
         for (int j = 0; j < size; j++)
             if (board[i][j] == 0)
@@ -200,7 +214,7 @@ int isBoardComplete(int** board, int size) {
 }
 
 //function for copying board (to prevent from making changes in original board)
-void copyBoard(int** board, int** originalBoard, int size) {
+void copyBoard(int **board, int **originalBoard, int size) {
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
             originalBoard[i][j] = board[i][j];
@@ -209,14 +223,12 @@ void copyBoard(int** board, int** originalBoard, int size) {
 }
 
 //removing given number of items from board
-void removeNumbers(int** board, int size, int quantityToDelete) {
+void removeNumbers(int **board, int size, int quantityToDelete) {
     int removed = 0;
-    while (removed < quantityToDelete)
-    {
+    while (removed < quantityToDelete) {
         int row = rand() % size;
         int col = rand() % size;
-        if (board[row][col] != 0)
-        {
+        if (board[row][col] != 0) {
             board[row][col] = 0;
             removed++;
         }
@@ -224,7 +236,7 @@ void removeNumbers(int** board, int size, int quantityToDelete) {
 }
 
 //loop of the game
-void game(int** board, int size, int** originalBoard, int mistakes) {
+void game(int **board, int size, int **originalBoard, int mistakes) {
     while (1) {
         printBoard(board, size, originalBoard);
 
@@ -261,19 +273,16 @@ void game(int** board, int size, int** originalBoard, int mistakes) {
         row--;
         col--;
 
-        if (row >= size  || row < 0 || col >= size || col < 0) {
+        if (row >= size || row < 0 || col >= size || col < 0) {
             printf("Invalid input\n");
-        }
-        else if (originalBoard[row][col] != 0) {
+        } else if (originalBoard[row][col] != 0) {
             printf("You can't change the numbers that are already given.\n");
-        }
-        else if (isValidMove(board, size, row, col, value) == 0) {
+        } else if (isValidMove(board, size, row, col, value) == 0) {
             printf("\033[0;31m");
             printf("Invalid move.\n");
             printf("\033[0m");
             mistakes++;
-        }
-        else {
+        } else {
             board[row][col] = value;
         }
     }
@@ -282,29 +291,9 @@ void game(int** board, int size, int** originalBoard, int mistakes) {
 //creating new game
 void newGame() {
     int mistakes = 0;
-    int size = 0;
+    int size = chooseSize();
 
-    //choose of size of board
-    printf("Choose size of board:\n1) 4x4\n2) 9x9\n3) 16x16\n");
-    int answer;
-    scanf("%d", &answer);
-
-    while (answer != 1 && answer != 2 && answer != 3) {
-        printf("Please enter correct value.\n");
-        scanf("%d", &answer);
-    }
-
-    if (answer == 1) {
-        size = 4;
-    }
-    else if (answer == 2) {
-        size = 9;
-    }
-    else if (answer == 3) {
-        size = 16;
-    }
-
-    int **board = malloc(size * sizeof(int*));
+    int **board = malloc(size * sizeof(int *));
     for (int i = 0; i < size; i++) {
         board[i] = malloc(size * sizeof(int));
     }
@@ -323,19 +312,16 @@ void newGame() {
 
 
     if (level == 1) {
-        removeNumbers(board, size, (int)(size * size *  0.4));
-    }
-    else if (level == 2) {
-        removeNumbers(board, size, (int)(size * size *  0.6));
-    }
-    else if (level == 3) {
-        removeNumbers(board, size, (int)(size * size *  0.8));
-    }
-    else if (level == 4) {
-        removeNumbers(board, size, (int)(size * size *  0.95));
+        removeNumbers(board, size, (int) (size * size * 0.4));
+    } else if (level == 2) {
+        removeNumbers(board, size, (int) (size * size * 0.6));
+    } else if (level == 3) {
+        removeNumbers(board, size, (int) (size * size * 0.8));
+    } else if (level == 4) {
+        removeNumbers(board, size, (int) (size * size * 0.95));
     }
 
-    int **originalBoard = malloc(size * sizeof(int*));
+    int **originalBoard = malloc(size * sizeof(int *));
     for (int i = 0; i < size; i++) {
         originalBoard[i] = malloc(size * sizeof(int));
     }
@@ -353,33 +339,14 @@ void newGame() {
 
 //loading and preparing old game
 void oldGame() {
-    int size = 0;
+    int size = chooseSize();
 
-    printf("What size of game should I look for?\n1) 4x4\n2) 9x9\n3) 16x16\n");
-    int answer;
-
-    scanf("%d", &answer);
-    while (answer != 1 && answer != 2 && answer != 3) {
-        printf("Please choose correct option.\n");
-        scanf("%d", &answer);
-    }
-
-    if (answer == 1) {
-        size = 4;
-    }
-    else if (answer == 2) {
-        size = 9;
-    }
-    else if (answer == 3) {
-        size = 16;
-    }
-
-    int **board = malloc(size * sizeof(int*));
+    int **board = malloc(size * sizeof(int *));
     for (int i = 0; i < size; i++) {
         board[i] = malloc(size * sizeof(int));
     }
 
-    int **originalBoard = malloc(size * sizeof(int*));
+    int **originalBoard = malloc(size * sizeof(int *));
     for (int i = 0; i < size; i++) {
         originalBoard[i] = malloc(size * sizeof(int));
     }
@@ -398,6 +365,44 @@ void oldGame() {
     }
     free(board);
     free(originalBoard);
+}
+
+//simulated annealing solver
+void saSolver() {
+    int size = chooseSize();
+
+    int **board = malloc(size * sizeof(int *));
+    for (int i = 0; i < size; i++) {
+        board[i] = malloc(size * sizeof(int));
+    }
+
+    createBoard(board, size);
+
+    //trying on level 2
+    removeNumbers(board, size, (int) (size * size * 0.6));
+
+    //saving original values
+    int **originalBoard = malloc(size * sizeof(int *));
+    for (int i = 0; i < size; i++) {
+        originalBoard[i] = malloc(size * sizeof(int));
+    }
+
+    copyBoard(board, originalBoard, size);
+    printBoard(board, size, originalBoard);
+
+
+
+    for (int i = 0; i < size; i++) {
+        free(board[i]);
+        free(originalBoard[i]);
+    }
+    free(board);
+    free(originalBoard);
+}
+
+//genetic algorythm solver
+void gaSolver() {
+
 }
 
 //printing instruction how to play
@@ -422,28 +427,27 @@ void printInstruction() {
 int main(void) {
     int menu;
     do {
-        printf("Choose option from menu:\n1) New game\n2) Old game\n3) How to play\n4) Exit\n");
+        printf("Choose option from menu:\n1) New game\n2) Old game\n3) How to play\n4) Solve with SA\n5) Exit\n");
         scanf("%d", &menu);
 
-        while (menu != 1 && menu != 2 && menu != 3 && menu != 4) {
+        while (menu != 1 && menu != 2 && menu != 3 && menu != 4 && menu != 5) {
             printf("Please enter correct value.\n");
             scanf("%d", &menu);
         }
 
         if (menu == 1) {
             newGame();
-        }
-        else if (menu == 2) {
+        } else if (menu == 2) {
             oldGame();
-        }
-        else if (menu == 3) {
+        } else if (menu == 3) {
             printInstruction();
-        }
-        else if (menu == 4) {
+        } else if (menu == 4) {
+            saSolver();
+        } else if (menu == 5) {
             printf("Thank you for playing!");
         }
 
         while (getchar() != '\n');
-    } while (menu != 4);
+    } while (menu != 5);
     return 0;
 }
