@@ -6,8 +6,9 @@
 
 //struct for saving sudoku state
 typedef struct {
-    int grid[9][9];
-    int fixed[9][9];
+    //int grid[9][9];
+    //int fixed[9][9];
+    int **board;
     int conflicts;
 } SudokuState;
 
@@ -86,7 +87,9 @@ int count_conflicts(int **board, int size) {
             if (value != 0) {
                 // setting to zero to avoid conflicts with itself
                 board[i][j] = 0;
-                if (!isValidMove(board, size, i, j, value)) conflicts++;
+                if (!isValidMove(board, size, i, j, value)) {
+                    conflicts++;
+                }
                 board[i][j] = value;
             }
         }
@@ -122,6 +125,58 @@ int fillBoard(int **board, int size) {
         }
     }
     return 1;
+}
+
+//function to fill board with random numbers (function for solver)
+int fillBoardRandom(int **board, int **originalBoard, int size) {
+    int blockSize = (int) sqrt(size);
+    int numbers[size];
+
+    for (int row = 0; row < blockSize; row++) {
+        for (int column = 0; column < blockSize; column++) {
+
+            for (int i = 0; i < size; i++) {
+                numbers[i] = i + 1;
+            }
+            shuffle(numbers, size);
+
+            // Zbierz już użyte liczby w tym bloku
+            int used[size + 1]; // Index od 1 do size
+            for (int i = 0; i <= size; i++) used[i] = 0;
+
+            for (int i = 0; i < blockSize; i++) {
+                for (int j = 0; j < blockSize; j++) {
+                    int r = row * blockSize + i;
+                    int c = column * blockSize + j;
+                    int val = originalBoard[r][c];
+                    if (val != 0) used[val] = 1; // Zablokowane pole
+                }
+            }
+
+            // Wypełnij wolne pola losowymi, nieużytymi wartościami
+            int numIndex = 0;
+            for (int i = 0; i < blockSize; i++) {
+                for (int j = 0; j < blockSize; j++) {
+                    int r = row * blockSize + i;
+                    int c = column * blockSize + j;
+
+                    if (originalBoard[r][c] == 0) {
+                        // Znajdź najbliższą nieużywaną liczbę
+                        while (numIndex < size && used[numbers[numIndex]]) {
+                            numIndex++;
+                        }
+                        if (numIndex < size) {
+                            board[r][c] = numbers[numIndex];
+                            used[numbers[numIndex]] = 1;
+                            numIndex++;
+                        }
+                    } else {
+                        board[r][c] = originalBoard[r][c]; // Przepisz oryginalne
+                    }
+                }
+            }
+        }
+    }
 }
 
 //function to create clear board
@@ -393,13 +448,63 @@ void oldGame() {
     free(originalBoard);
 }
 
+void generateNeighbor(SudokuState *neighborState, SudokuState *currentState, int **originalBoard, int size) {
+    int blockSize = (int)sqrt(size);
+
+    //copying current state to neighbor
+    for (int i = 0; i < size; i++) {
+        memcpy(neighborState->board[i], currentState->board[i], size * sizeof(int));
+    }
+
+    //choosing random cell for replacement
+    int blockRow = rand() % blockSize;
+    int blockCol = rand() % blockSize;
+
+    //find cells which aren't blocked
+    int freeCells[size*size][2];
+    int count = 0;
+    for (int i = 0; i < blockSize; i++) {
+        for (int j = 0; j < blockSize; j++) {
+            int row = blockRow * blockSize + i;
+            int col = blockCol * blockSize + j;
+            if (!originalBoard[row][col]) {
+                freeCells[count][0] = row;
+                freeCells[count][1] = col;
+                count++;
+            }
+        }
+    }
+
+    if (count >= 2) {
+        //choosing 2 random cells to exchange
+        int a = rand() % count;
+        int b;
+        do {
+            b = rand() % count;
+        } while (b == a);
+
+        int row1 = freeCells[a][0], col1 = freeCells[a][1];
+        int row2 = freeCells[b][0], col2 = freeCells[b][1];
+
+        //exchange their values
+        int temp = neighborState->board[row1][col1];
+        neighborState->board[row1][col1] = neighborState->board[row2][col2];
+        neighborState->board[row2][col2] = temp;
+    }
+
+    //check how many conflicts does the neighbor have
+    neighborState->conflicts = count_conflicts(neighborState->board, size);
+}
+
 //simulated annealing solver
 void saSolver() {
     int size = 9;// chooseSize();
 
     int **board = malloc(size * sizeof(int *));
+    int **originalBoard = malloc(size * sizeof(int *));
     for (int i = 0; i < size; i++) {
         board[i] = malloc(size * sizeof(int));
+        originalBoard[i] = malloc(size * sizeof(int));
     }
 
     createBoard(board, size);
@@ -407,24 +512,84 @@ void saSolver() {
     //trying on level 2
     removeNumbers(board, size, (int) (size * size * 0.6));
 
-    //saving original values
-    int **originalBoard = malloc(size * sizeof(int *));
+    //copying original board
+    copyBoard(board, originalBoard, size);
+
+    //filling board with random values
+    fillBoardRandom(board, originalBoard, size);
+
+    srand(time(NULL));
+
+    int **current = malloc(size * sizeof(int *));
+    int **neighbor = malloc(size * sizeof(int *));
+    int **best = malloc(size * sizeof(int *));
     for (int i = 0; i < size; i++) {
-        originalBoard[i] = malloc(size * sizeof(int));
+        current[i] = malloc(size * sizeof(int));
+        neighbor[i] = malloc(size * sizeof(int));
+        best[i] = malloc(size * sizeof(int));
+        memcpy(current[i], board[i], size * sizeof(int));
+        memcpy(best[i], board[i], size * sizeof(int));
     }
 
-    copyBoard(board, originalBoard, size);
-    printBoard(board, size, originalBoard);
+    SudokuState currentState, neighborState;
+    currentState.board = current;
+    currentState.conflicts = count_conflicts(current, size);
 
+    neighborState.board = neighbor;
+    neighborState.conflicts = currentState.conflicts;
 
+    int bestConflicts = count_conflicts(best, size);
+    int currentConflicts = bestConflicts;
+
+    double T = 5.0;
+    double T_end = 0.01;
+    double alpha = 0.995;
+    int maxIterations = 100000;
+
+    for (int iter = 0; iter < maxIterations && T > T_end; iter++) {
+        generateNeighbor(&neighborState, &currentState, originalBoard, size);
+        int neighborConflicts = neighborState.conflicts;
+        int delta = neighborConflicts - currentConflicts;
+
+        if (delta < 0 || (rand() / (double)RAND_MAX) < exp(-delta / T)) {
+            for (int i = 0; i < size; i++) {
+                memcpy(current[i], neighbor[i], size * sizeof(int));
+            }
+            currentConflicts = neighborConflicts;
+
+            if (currentConflicts < bestConflicts) {
+                for (int i = 0; i < size; i++) {
+                    memcpy(best[i], current[i], size * sizeof(int));
+                }
+                bestConflicts = currentConflicts;
+            }
+        }
+
+        if (iter % 1000 == 0 || bestConflicts == 0) {
+            printf("Iter: %d, T: %.3f, Conflicts: %d\n", iter, T, bestConflicts);
+        }
+
+        if (bestConflicts == 0) break;
+        T *= alpha;
+    }
+
+    printf("\nFinal solution (conflicts = %d):\n", bestConflicts);
+    printBoard(best, size, originalBoard);
 
     for (int i = 0; i < size; i++) {
         free(board[i]);
         free(originalBoard[i]);
+        free(current[i]);
+        free(neighbor[i]);
+        free(best[i]);
     }
     free(board);
     free(originalBoard);
+    free(current);
+    free(neighbor);
+    free(best);
 }
+
 
 //genetic algorythm solver
 void gaSolver() {
