@@ -4,6 +4,13 @@
 #include <time.h>
 #include <string.h>
 
+//struct for saving sudoku state
+typedef struct {
+    int grid[9][9];
+    int fixed[9][9];
+    int conflicts;
+} SudokuState;
+
 //function drawing horizontal line separating board :)
 void drawLine(int n) {
     for (int i = 1; i <= n; i++) {
@@ -67,6 +74,25 @@ int isValidMove(int **board, int size, int row, int col, int number) {
     }
 
     return 1;
+}
+
+//function for counting number of conflicts
+int count_conflicts(int **board, int size) {
+    int conflicts = 0;
+
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            int value = board[i][j];
+            if (value != 0) {
+                // setting to zero to avoid conflicts with itself
+                board[i][j] = 0;
+                if (!isValidMove(board, size, i, j, value)) conflicts++;
+                board[i][j] = value;
+            }
+        }
+    }
+
+    return conflicts;
 }
 
 //function to fill board with numbers
@@ -369,7 +395,7 @@ void oldGame() {
 
 //simulated annealing solver
 void saSolver() {
-    int size = chooseSize();
+    int size = 9;// chooseSize();
 
     int **board = malloc(size * sizeof(int *));
     for (int i = 0; i < size; i++) {
