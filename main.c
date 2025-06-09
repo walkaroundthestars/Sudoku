@@ -78,7 +78,7 @@ int isValidMove(int **board, int size, int row, int col, int number) {
 }
 
 //function for counting number of conflicts
-int count_conflicts(int **board, int size) {
+int countConflicts(int **board, int size) {
     int conflicts = 0;
 
     for (int i = 0; i < size; i++) {
@@ -493,7 +493,7 @@ void generateNeighbor(SudokuState *neighborState, SudokuState *currentState, int
     }
 
     //check how many conflicts does the neighbor have
-    neighborState->conflicts = count_conflicts(neighborState->board, size);
+    neighborState->conflicts = countConflicts(neighborState->board, size);
 }
 
 //simulated annealing solver
@@ -533,12 +533,12 @@ void saSolver() {
 
     SudokuState currentState, neighborState;
     currentState.board = current;
-    currentState.conflicts = count_conflicts(current, size);
+    currentState.conflicts = countConflicts(current, size);
 
     neighborState.board = neighbor;
     neighborState.conflicts = currentState.conflicts;
 
-    int bestConflicts = count_conflicts(best, size);
+    int bestConflicts = countConflicts(best, size);
     int currentConflicts = bestConflicts;
 
     double T = 5.0;
@@ -590,10 +590,232 @@ void saSolver() {
     free(best);
 }
 
+//creating one single genotype
+void createGenotype(SudokuState *ind, int **originalBoard, int size) {
+    ind->board = malloc(size * sizeof(int *));
+
+    for (int i = 0; i < size; i++) {
+        ind->board[i] = malloc(size * sizeof(int));
+    }
+
+    fillBoardRandom(ind->board, originalBoard, size);
+    ind->conflicts = countConflicts(ind->board, size);
+}
+
+//crossing genotypes by rows
+void rowCrossover(SudokuState *child, SudokuState *mother, SudokuState *father, int size, int **originalBoard) {
+    // for (int i = 0; i < size; i++) {
+    //     int **childBoard = child->board;
+    //     if (rand() % 2 == 0) {
+    //         memcpy(childBoard[i], mother->board[i], size * sizeof(int));
+    //     } else {
+    //         memcpy(childBoard[i], father->board[i], size * sizeof(int));
+    //     }
+    // }
+
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            if (originalBoard[i][j] != 0) {
+                child->board[i][j] = originalBoard[i][j]; // nie zmieniamy danych oryginalnych
+            } else {
+                if (rand() % 2 == 0) {
+                    child->board[i][j] = mother->board[i][j];
+                } else {
+                    child->board[i][j] = father->board[i][j];
+                }
+            }
+        }
+    }
+}
+
+//crossing genotypes by blocks
+void blockCrossover(SudokuState *child, SudokuState *mother, SudokuState *father, int size, int **originalBoard) {
+    int blockSize = (int)sqrt(size);
+
+    for (int i = 0; i < blockSize; i++) {
+        for (int j = 0; j < blockSize; j++) {
+            int useMother = rand() % 2;
+
+            for (int k = 0; k < blockSize; k++) {
+                for (int l = 0; l < blockSize; l++) {
+                    int row = i * blockSize + k;
+                    int col = j * blockSize + l;
+
+                    //child->board[row][col] = useMother ? mother->board[row][col] : father->board[row][col];
+                    if (originalBoard[row][col] != 0) {
+                        child->board[row][col] = originalBoard[row][col];
+                    } else {
+                        if (useMother)
+                            child->board[row][col] = mother->board[row][col];
+                        else
+                            child->board[row][col] = father->board[row][col];
+                    }
+                }
+            }
+        }
+    }
+}
+
+void mutate(SudokuState *ind, int **originalBoard, int size) {
+    int blockSize = (int)sqrt(size);
+    int blockRow = rand() % blockSize;
+    int blockCol = rand() % blockSize;
+
+    int freeCells[size][2];
+    int count = 0;
+
+    for (int i = 0; i < blockSize; i++) {
+        for (int j = 0; j < blockSize; j++) {
+            int row = blockRow * blockSize + i;
+            int column = blockCol * blockSize + j;
+            if (originalBoard[row][column] == 0) {
+                freeCells[count][0] = row;
+                freeCells[count][1] = column;
+                count++;
+            }
+        }
+    }
+
+    if (count >= 2) {
+        int a = rand() % count;
+        int b;
+        do {
+            b = rand() % count;
+        } while (a == b);
+
+        int row1 = freeCells[a][0];
+        int column1 = freeCells[a][1];
+        int row2 = freeCells[b][0];
+        int column2 = freeCells[b][1];
+
+        int temp = ind->board[row1][column1];
+        ind->board[row1][column1] = ind->board[row2][column2];
+        ind->board[row2][column2] = temp;
+    }
+
+    ind->conflicts = countConflicts(ind->board, size);
+}
+
+//selection of child genotypes
+SudokuState *selection(SudokuState **pop, int popSize, int tournamentSize) {
+    SudokuState *best = pop[rand() % popSize];
+    for (int i = 1; i < tournamentSize; i++) {
+        SudokuState *competitor = pop[rand() % popSize];
+        if (competitor->conflicts < best->conflicts)
+            best = competitor;
+    }
+    return best;
+}
+
+//function for copying the best state of sudoku
+SudokuState *copyState(SudokuState *bestState, int size) {
+    SudokuState *copy = malloc(sizeof(SudokuState));
+    copy->board = malloc(size * sizeof(int *));
+    for (int i = 0; i < size; i++) {
+        copy->board[i] = malloc(size * sizeof(int));
+        memcpy(copy->board[i], bestState->board[i], size * sizeof(int));
+    }
+    copy->conflicts = bestState->conflicts;
+    return copy;
+}
 
 //genetic algorythm solver
 void gaSolver() {
+    int size = 9; //chooseSize();
 
+    int **board = malloc(size * sizeof(int *));
+    int **originalBoard = malloc(size * sizeof(int *));
+    for (int i = 0; i < size; i++) {
+        board[i] = malloc(size * sizeof(int));
+        originalBoard[i] = malloc(size * sizeof(int));
+    }
+
+    createBoard(board, size);
+
+    //trying on level 2
+    removeNumbers(board, size, (int) (size * size * 0.6));
+
+    //copying original board
+    copyBoard(board, originalBoard, size);
+
+    int populationSize = 200;
+    int generations = 1000;
+    double mutationRate = 0.1;
+    int tournamentSize = 5;
+
+    SudokuState **population = malloc(populationSize * sizeof(SudokuState *));
+    for (int i = 0; i < populationSize; i++) {
+        population[i] = malloc(sizeof(SudokuState));
+        population[i]->board = malloc(size * sizeof(int *));
+        for (int j = 0; j < size; j++) {
+            population[i]->board[j] = malloc(size * sizeof(int));
+        }
+        createGenotype(population[i], originalBoard, size);
+    }
+
+    SudokuState * best = population[0];
+
+    for (int generation = 0; generation < generations; generation++) {
+        SudokuState **newPopulation = malloc(populationSize * sizeof(SudokuState *));
+        for (int i = 0; i < populationSize; i++) {
+            newPopulation[i] = malloc(sizeof(SudokuState));
+            newPopulation[i]->board = malloc(size * sizeof(int *));
+            for (int j = 0; j < size; j++) {
+                newPopulation[i]->board[j] = malloc(size * sizeof(int));
+            }
+
+            SudokuState *mother = selection(population, populationSize, tournamentSize);
+            SudokuState *father = selection(population, populationSize, tournamentSize);
+
+            //crossover
+            blockCrossover(newPopulation[i], mother, father, size, originalBoard);
+            //rowCrossover(newPopulation[i], mother, father, size, originalBoard);
+
+            // Mutation
+            if ((rand() / (double)RAND_MAX) < mutationRate) {
+                mutate(newPopulation[i], originalBoard, size);
+            }
+
+            newPopulation[i]->conflicts = countConflicts(newPopulation[i]->board, size);
+
+            //if current genotype is better, set it as new best
+            if (newPopulation[i]->conflicts < best->conflicts) {
+                best = newPopulation[i];
+            }
+        }
+
+        //deleting old population
+        for (int i = 0; i < populationSize; i++) {
+            for (int j = 0; j < size; j++) {
+                free(population[i]->board[j]);
+            }
+            free(population[i]->board);
+            free(population[i]);
+        }
+        free(population);
+
+        population = newPopulation;
+
+        if (generation % 10 == 0 || best->conflicts == 0) {
+            printf("Generation: %d, number of conflicts: %d\n", generation, best->conflicts);
+        }
+
+        if (best->conflicts == 0) break;
+    }
+
+    printf("\nBest solution:\n");
+    printBoard(best->board, size, originalBoard);
+    printf("Conflicts: %d\n", best->conflicts);
+
+
+    for (int i = 0; i < populationSize; i++) {
+        for (int j = 0; j < size; j++) {
+            free(population[i]->board[j]);
+        }
+        free(population[i]->board);
+        free(population[i]);
+    }
+    free(population);
 }
 
 //printing instruction how to play
@@ -618,10 +840,10 @@ void printInstruction() {
 int main(void) {
     int menu;
     do {
-        printf("Choose option from menu:\n1) New game\n2) Old game\n3) How to play\n4) Solve with SA\n5) Exit\n");
+        printf("Choose option from menu:\n1) New game\n2) Old game\n3) How to play\n4) Solve with SA\n5) Solve with GA\n6) Exit\n");
         scanf("%d", &menu);
 
-        while (menu != 1 && menu != 2 && menu != 3 && menu != 4 && menu != 5) {
+        while (menu != 1 && menu != 2 && menu != 3 && menu != 4 && menu != 5 && menu != 6) {
             printf("Please enter correct value.\n");
             scanf("%d", &menu);
         }
@@ -635,10 +857,12 @@ int main(void) {
         } else if (menu == 4) {
             saSolver();
         } else if (menu == 5) {
+            gaSolver();
+        } else if (menu == 6) {
             printf("Thank you for playing!");
         }
 
         while (getchar() != '\n');
-    } while (menu != 5);
+    } while (menu != 6);
     return 0;
 }
