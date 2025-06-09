@@ -4,10 +4,8 @@
 #include <time.h>
 #include <string.h>
 
-//struct for saving sudoku state
+//sudoku state with board and number of conflicts
 typedef struct {
-    //int grid[9][9];
-    //int fixed[9][9];
     int **board;
     int conflicts;
 } SudokuState;
@@ -140,20 +138,26 @@ int fillBoardRandom(int **board, int **originalBoard, int size) {
             }
             shuffle(numbers, size);
 
-            // Zbierz już użyte liczby w tym bloku
-            int used[size + 1]; // Index od 1 do size
-            for (int i = 0; i <= size; i++) used[i] = 0;
+            //todo: mozna zrobić funkcje do sprawdzania wolnych komórek bo sie chyba powtarza
+            //checking which cells are not 0
+            int used[size + 1];
+            for (int i = 0; i <= size; i++) {
+                used[i] = 0;
+            }
 
             for (int i = 0; i < blockSize; i++) {
                 for (int j = 0; j < blockSize; j++) {
                     int r = row * blockSize + i;
                     int c = column * blockSize + j;
-                    int val = originalBoard[r][c];
-                    if (val != 0) used[val] = 1; // Zablokowane pole
+                    int value = originalBoard[r][c];
+
+                    if (value != 0) {
+                        used[value] = 1;
+                    }
                 }
             }
 
-            // Wypełnij wolne pola losowymi, nieużytymi wartościami
+            //fill empty cells
             int numIndex = 0;
             for (int i = 0; i < blockSize; i++) {
                 for (int j = 0; j < blockSize; j++) {
@@ -161,7 +165,6 @@ int fillBoardRandom(int **board, int **originalBoard, int size) {
                     int c = column * blockSize + j;
 
                     if (originalBoard[r][c] == 0) {
-                        // Znajdź najbliższą nieużywaną liczbę
                         while (numIndex < size && used[numbers[numIndex]]) {
                             numIndex++;
                         }
@@ -171,7 +174,7 @@ int fillBoardRandom(int **board, int **originalBoard, int size) {
                             numIndex++;
                         }
                     } else {
-                        board[r][c] = originalBoard[r][c]; // Przepisz oryginalne
+                        board[r][c] = originalBoard[r][c];
                     }
                 }
             }
@@ -483,8 +486,10 @@ void generateNeighbor(SudokuState *neighborState, SudokuState *currentState, int
             b = rand() % count;
         } while (b == a);
 
-        int row1 = freeCells[a][0], col1 = freeCells[a][1];
-        int row2 = freeCells[b][0], col2 = freeCells[b][1];
+        int row1 = freeCells[a][0];
+        int col1 = freeCells[a][1];
+        int row2 = freeCells[b][0];
+        int col2 = freeCells[b][1];
 
         //exchange their values
         int temp = neighborState->board[row1][col1];
@@ -542,11 +547,11 @@ void saSolver() {
     int currentConflicts = bestConflicts;
 
     double T = 5.0;
-    double T_end = 0.01;
+    double endT = 0.01;
     double alpha = 0.995;
     int maxIterations = 100000;
 
-    for (int iter = 0; iter < maxIterations && T > T_end; iter++) {
+    for (int iter = 0; iter < maxIterations && T > endT; iter++) {
         generateNeighbor(&neighborState, &currentState, originalBoard, size);
         int neighborConflicts = neighborState.conflicts;
         int delta = neighborConflicts - currentConflicts;
