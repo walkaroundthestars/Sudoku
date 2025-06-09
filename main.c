@@ -503,7 +503,7 @@ void generateNeighbor(SudokuState *neighborState, SudokuState *currentState, int
 
 //simulated annealing solver
 void saSolver() {
-    int size = 9;// chooseSize();
+    int size = 9;
 
     int **board = malloc(size * sizeof(int *));
     int **originalBoard = malloc(size * sizeof(int *));
@@ -546,7 +546,7 @@ void saSolver() {
     int bestConflicts = countConflicts(best, size);
     int currentConflicts = bestConflicts;
 
-    double T = 5.0;
+    double T = 5000.0;
     double endT = 0.01;
     double alpha = 0.995;
     int maxIterations = 100000;
@@ -570,7 +570,7 @@ void saSolver() {
             }
         }
 
-        if (iter % 1000 == 0 || bestConflicts == 0) {
+        if (iter % 10 == 0 || bestConflicts == 0) {
             printf("Iter: %d, T: %.3f, Conflicts: %d\n", iter, T, bestConflicts);
         }
 
@@ -609,19 +609,11 @@ void createGenotype(SudokuState *ind, int **originalBoard, int size) {
 
 //crossing genotypes by rows
 void rowCrossover(SudokuState *child, SudokuState *mother, SudokuState *father, int size, int **originalBoard) {
-    // for (int i = 0; i < size; i++) {
-    //     int **childBoard = child->board;
-    //     if (rand() % 2 == 0) {
-    //         memcpy(childBoard[i], mother->board[i], size * sizeof(int));
-    //     } else {
-    //         memcpy(childBoard[i], father->board[i], size * sizeof(int));
-    //     }
-    // }
-
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
+            //preventing changes in original board
             if (originalBoard[i][j] != 0) {
-                child->board[i][j] = originalBoard[i][j]; // nie zmieniamy danych oryginalnych
+                child->board[i][j] = originalBoard[i][j];
             } else {
                 if (rand() % 2 == 0) {
                     child->board[i][j] = mother->board[i][j];
@@ -646,7 +638,7 @@ void blockCrossover(SudokuState *child, SudokuState *mother, SudokuState *father
                     int row = i * blockSize + k;
                     int col = j * blockSize + l;
 
-                    //child->board[row][col] = useMother ? mother->board[row][col] : father->board[row][col];
+                    //preventing changes in original board
                     if (originalBoard[row][col] != 0) {
                         child->board[row][col] = originalBoard[row][col];
                     } else {
@@ -661,6 +653,7 @@ void blockCrossover(SudokuState *child, SudokuState *mother, SudokuState *father
     }
 }
 
+//function for mutation
 void mutate(SudokuState *ind, int **originalBoard, int size) {
     int blockSize = (int)sqrt(size);
     int blockRow = rand() % blockSize;
@@ -669,6 +662,7 @@ void mutate(SudokuState *ind, int **originalBoard, int size) {
     int freeCells[size][2];
     int count = 0;
 
+    //checking which cells are empty
     for (int i = 0; i < blockSize; i++) {
         for (int j = 0; j < blockSize; j++) {
             int row = blockRow * blockSize + i;
@@ -681,6 +675,7 @@ void mutate(SudokuState *ind, int **originalBoard, int size) {
         }
     }
 
+    //exchanging 2 cells when there are 2 or more free cells
     if (count >= 2) {
         int a = rand() % count;
         int b;
@@ -702,10 +697,10 @@ void mutate(SudokuState *ind, int **originalBoard, int size) {
 }
 
 //selection of child genotypes
-SudokuState *selection(SudokuState **pop, int popSize, int tournamentSize) {
-    SudokuState *best = pop[rand() % popSize];
+SudokuState *selection(SudokuState **population, int populationSize, int tournamentSize) {
+    SudokuState *best = population[rand() % populationSize];
     for (int i = 1; i < tournamentSize; i++) {
-        SudokuState *competitor = pop[rand() % popSize];
+        SudokuState *competitor = population[rand() % populationSize];
         if (competitor->conflicts < best->conflicts)
             best = competitor;
     }
@@ -726,7 +721,7 @@ SudokuState *copyState(SudokuState *bestState, int size) {
 
 //genetic algorythm solver
 void gaSolver() {
-    int size = 9; //chooseSize();
+    int size = 9; // chooseSize();
 
     int **board = malloc(size * sizeof(int *));
     int **originalBoard = malloc(size * sizeof(int *));
